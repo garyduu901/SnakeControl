@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 as cv
 import glob
+import math
 
 # Chessboard size
 chessBoardSize = (9, 9)  # Size of the chessboard
@@ -61,44 +62,40 @@ if len(objPoints) == 0 or len(imgPoints) == 0:
 else:
     # Perform calibration
     ret, cameraMatrix, dist, rvecs, tvecs = cv.calibrateCamera(objPoints, imgPoints, frameSize, None, None)
-
     print("Camera Calibrated:", ret)
     print("\nCamera Matrix:\n", cameraMatrix)
-    print("\nDistortion Parameters:\n", dist)
-    print("\nRotation Vectors:\n", rvecs)
-    print("\nTranslation Vectors:\n", tvecs)
+    # print("\nDistortion Parameters:\n", dist)
+    # print("\nRotation Vectors:\n", rvecs)
+    # print("\nTranslation Vectors:\n", tvecs)
 
-    ###################################### UNDISTORTION ##################################
+fx = cameraMatrix[0][0]
+fy = cameraMatrix[1][1]
+W = 0.5
 
-    img = cv.imread('captured_images/image_1.jpg')  # Ensure this file exists in the folder
-    if img is None:
-        print("Failed to load image 'captured_images/image_1.jpg'")
-    else:
-        h, w = img.shape[:2]
-        newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(cameraMatrix, dist, (w, h), 1, (w, h))
+ref = cv.imread('pixel_to_dist/diff_z.jpg')
+chessBoardSize = (9, 9)  # Size of the chessboard
+criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-        # Undistort 
-        dst = cv.undistort(img, cameraMatrix, dist, None, newCameraMatrix)
-        # Crop the image
-        x, y, w, h = roi
-        dst = dst[y:y+h, x:x+w]
-        cv.imwrite('caliResult1.jpg', dst)
+# Get corners from calibrated images
+gray = cv.cvtColor(ref, cv.COLOR_BGR2GRAY)
+kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]]) 
+sharpened = cv.filter2D(gray, -1, kernel)
+ret, corners = cv.findChessboardCorners(sharpened, chessBoardSize, None)
+corners = cv.cornerSubPix(sharpened, corners, (11, 11), (-1, -1), criteria)
 
-        # Undistort with remapping 
-        mapx, mapy = cv.initUndistortRectifyMap(cameraMatrix, dist, None, newCameraMatrix, (w, h), 5)
-        dst = cv.remap(img, mapx, mapy, cv.INTER_LINEAR)
-        # Crop the image
-        x, y, w, h = roi
-        dst = dst[y:y+h, x:x+w]
-        cv.imwrite('caliResult2.jpg', dst)
+# Acquire side length
+side_length = []
 
-        # Reprojection Error
-        mean_error = 0
+for i in range(chessBoardSize[1]):
+    for j in range(chessBoardSize[0] - 1):
+        curr_corner = corners[j+i*9][0]
+        next_corner = corners[j+i*9+1][0]
+        pixel_num = math.sqrt((curr_corner[0]-next_corner[0])**2 + (curr_corner[1]-next_corner[1])**2)
+        side_length.append(pixel_num)
+    
 
-        for i in range(len(objPoints)):
-            imgPoints2, _ = cv.projectPoints(objPoints[i], rvecs[i], tvecs[i], cameraMatrix, dist)
-            error = cv.norm(imgPoints[i], imgPoints2, cv.NORM_L2) / len(imgPoints2)
-            mean_error += error
+P = np.average(side_length)
+D = W * fx / P
+W_prime = D * P * 2 / fx
 
-        print("\nTotal Error: {}".format(mean_error / len(objPoints)))
-        print("\n\n\n")
+print(W_prime)
