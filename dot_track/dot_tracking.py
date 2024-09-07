@@ -27,10 +27,10 @@ def apply_mask(image):
 
     # Upper + lower range mask
     image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
-    lower1 = np.array([155,50,10])
+    lower1 = np.array([155,50,50])
     upper1 = np.array([179,255,255])
 
-    lower2 = np.array([0,50,10])
+    lower2 = np.array([0,50,50])
     upper2 = np.array([10,255,255])
 
     mask1 = cv.inRange(image, lower1, upper1)
@@ -77,7 +77,7 @@ def apply_mask(image):
     return x, y
 
 if __name__=="__main__":
-    cap = cv.VideoCapture('test.mp4')
+    cap = cv.VideoCapture('dot_track/test2.mp4')
 
     # params for ShiTomasi corner detection
     feature_params = dict( maxCorners = 100,
@@ -99,6 +99,8 @@ if __name__=="__main__":
 
     # Create a mask image for drawing purposes
     mask = np.zeros_like(init_frame)
+    count = 0
+    img_array = []
 
     while(1):
         ret, frame = cap.read()
@@ -123,8 +125,14 @@ if __name__=="__main__":
             mask = cv.line(mask, (int(a), int(b)), (int(c), int(d)), [0, 255, 0], 2)
             frame = cv.circle(frame, (int(a), int(b)), 5, [0, 255, 0], -1)
         img = cv.add(frame, mask)
+        img_array.append(img)
+        height, width, layers = img.shape
+        size = (width,height)
 
         cv.imshow('frame', img)
+        
+        
+        count += 1
         k = cv.waitKey(30) & 0xff
         if k == 27:
             break
@@ -133,4 +141,8 @@ if __name__=="__main__":
         old_gray = frame_gray.copy()
         p0 = good_new.reshape(-1, 1, 2)
 
+    out = cv.VideoWriter('track_output.mp4',cv.VideoWriter_fourcc(*'DIVX'), 30, size)
+    for i in range(len(img_array)):
+        out.write(img_array[i])
+    out.release()
     cv.destroyAllWindows()
