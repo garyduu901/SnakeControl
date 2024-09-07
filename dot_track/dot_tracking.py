@@ -79,6 +79,7 @@ def apply_mask(image):
 if __name__=="__main__":
     cap = cv.VideoCapture('dot_track/test2.mp4')
 
+
     # params for ShiTomasi corner detection
     feature_params = dict( maxCorners = 100,
                         qualityLevel = 0.3,
