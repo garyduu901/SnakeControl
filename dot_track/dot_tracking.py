@@ -9,6 +9,7 @@ Bilateral Filtering: https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.h
 
 import numpy as np
 import cv2 as cv
+import matplotlib.pyplot as plt
 
 '''
 * apply_mask: apply a mask to the first frame of the video, 
@@ -101,6 +102,9 @@ if __name__=="__main__":
     mask = np.zeros_like(init_frame)
     count = 0
     img_array = []
+    x_cord = []
+    y_cord = []
+    dist = 0
 
     while(1):
         ret, frame = cap.read()
@@ -122,6 +126,9 @@ if __name__=="__main__":
         for i, (new, old) in enumerate(zip(good_new, good_old)):
             a, b = new.ravel()
             c, d = old.ravel()
+            x_cord.append(int(a))
+            y_cord.append(int(b))
+            dist += ((a-c)**2+(b-d)**2)**2
             mask = cv.line(mask, (int(a), int(b)), (int(c), int(d)), [0, 255, 0], 2)
             frame = cv.circle(frame, (int(a), int(b)), 5, [0, 255, 0], -1)
         img = cv.add(frame, mask)
@@ -141,8 +148,16 @@ if __name__=="__main__":
         old_gray = frame_gray.copy()
         p0 = good_new.reshape(-1, 1, 2)
 
-    out = cv.VideoWriter('track_output.mp4',cv.VideoWriter_fourcc(*'DIVX'), 30, size)
+    out = cv.VideoWriter('/dot_track/track_output.mp4',cv.VideoWriter_fourcc(*'DIVX'), 30, size)
     for i in range(len(img_array)):
         out.write(img_array[i])
     out.release()
+    x_cord = np.array(x_cord)
+    y_cord = np.array(y_cord)
+
+    print("Distance traveled in pixels: " + str(dist))
+    plt.plot(x_cord, y_cord)
+    plt.gca().invert_yaxis()
+    plt.show()
+
     cv.destroyAllWindows()
